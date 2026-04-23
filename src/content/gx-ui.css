@@ -1,0 +1,91 @@
+.gx-btn {
+  --gx-btn-bg: linear-gradient(180deg, #6e7781 0%, #57606a 100%);
+  --gx-btn-bg-on: linear-gradient(180deg, #2f81f7 0%, #1f6feb 100%);
+  --gx-btn-fg: #ffffff;
+  --gx-btn-border: rgba(255, 255, 255, 0.14);
+  --gx-btn-ring: #ffffff;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 8px;
+  padding: 4px 10px;
+  font:
+    600 12px/1.4 -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  color: var(--gx-btn-fg);
+  background: var(--gx-btn-bg);
+  border: 1px solid var(--gx-btn-border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition:
+    filter 0.12s ease,
+    background 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.gx-btn:hover {
+  filter: brightness(1.08);
+}
+
+.gx-btn:focus-visible {
+  outline: 2px solid var(--gx-btn-ring);
+  outline-offset: 2px;
+}
+
+.gx-btn--on {
+  background: var(--gx-btn-bg-on);
+  box-shadow: 0 0 0 1px rgba(47, 129, 247, 0.35);
+}
+
+.gx-btn--ghost {
+  --gx-btn-bg: transparent;
+  --gx-btn-fg: inherit;
+  --gx-btn-border: rgba(127, 127, 127, 0.4);
+}
+
+.gx-btn__mark {
+  font-size: 11px;
+  opacity: 0.9;
+}
+
+.gx-btn__label {
+  white-space: nowrap;
+}
+
+.gx-btn--icon {
+  padding: 6px;
+  gap: 0;
+}
+
+.gx-btn__icon {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+}
+
+.gx-btn__icon svg {
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+
+.gx-sparkle-layer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.gx-sparkle {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  text-shadow: 0 0 6px currentColor;
+  pointer-events: none;
+  will-change: transform, opacity;
+}

@@ -1,134 +1,106 @@
-// Content script: runs on github.com pages.
-// - Responds to popup requests for page context.
-// - Injects a small "Enhance" button as a scaffold for in-page actions.
-
 (() => {
-  const PAGE_TYPES = [
-    { test: /^\/[^/]+\/[^/]+\/pull\/\d+/, name: 'pull-request' },
-    { test: /^\/[^/]+\/[^/]+\/issues\/\d+/, name: 'issue' },
-    { test: /^\/[^/]+\/[^/]+\/pulls\/?$/, name: 'pulls-list' },
-    { test: /^\/[^/]+\/[^/]+\/issues\/?$/, name: 'issues-list' },
-    { test: /^\/[^/]+\/[^/]+\/?$/, name: 'repo-home' },
-    { test: /^\/notifications/, name: 'notifications' },
-    { test: /^\/?$/, name: 'dashboard' }
-  ];
+  const BUTTON_ID = 'gx-enhance-btn';
+  const BODY_CLASS = 'gx-enhanced';
+  const STORAGE_KEY = 'gx-enabled';
 
-  function detectPage() {
-    const path = location.pathname;
-    const match = PAGE_TYPES.find((p) => p.test.test(path));
-    return match ? match.name : 'other';
+  let enabled = false;
+  let lastUrl = location.href;
+
+  function applyButtonState() {
+    const btn = document.getElementById(BUTTON_ID);
+    if (btn) {
+      GX.setLabel(btn, enabled ? 'Enhanced' : 'Enhance');
+      GX.setPressed(btn, enabled);
+    }
   }
 
-  function detectRepo() {
-    const m = location.pathname.match(/^\/([^/]+)\/([^/]+)(?:\/|$)/);
-    if (!m) return null;
-    const [, owner, repo] = m;
-    // Ignore reserved owner-less paths.
-    if (
-      ['notifications', 'pulls', 'issues', 'settings', 'marketplace'].includes(
-        owner
-      )
-    ) {
-      return null;
+  function applyEnhancements() {
+    document.body.classList.toggle(BODY_CLASS, enabled);
+    if (enabled) {
+      GX.pages.mount();
+    } else {
+      GX.pages.unmount();
     }
-    return `${owner}/${repo}`;
+    applyButtonState();
   }
 
-  /** Collect a few useful items currently visible on the page. */
-  function collectItems() {
-    const items = [];
+  async function loadState() {
+    const result = await chrome.storage.local.get(STORAGE_KEY);
+    enabled = Boolean(result[STORAGE_KEY]);
+    applyEnhancements();
+  }
 
-    // PR / Issue list rows.
-    const rows = document.querySelectorAll(
-      'div[aria-label="Issues"] a[data-hovercard-type="issue"], ' +
-        'div[aria-label="Issues"] a[data-hovercard-type="pull_request"], ' +
-        '.js-issue-row a.Link--primary'
-    );
-    for (const a of rows) {
-      items.push({
-        label: a.textContent.trim().slice(0, 80),
-        type: a.dataset.hovercardType === 'pull_request' ? 'PR' : 'Issue',
-        url: a.href
-      });
-      if (items.length >= 25) break;
-    }
-
-    // Files in a PR diff.
-    if (items.length === 0) {
-      const files = document.querySelectorAll('.file-header [data-path]');
-      for (const f of files) {
-        items.push({
-          label: f.getAttribute('data-path'),
-          type: 'File',
-          url:
-            f.closest('.file')?.querySelector('a.Link--primary')?.href ?? null
-        });
-        if (items.length >= 25) break;
+  async function toggle() {
+    enabled = !enabled;
+    await chrome.storage.local.set({ [STORAGE_KEY]: enabled });
+    applyEnhancements();
+    if (enabled) {
+      const btn = document.getElementById(BUTTON_ID);
+      if (btn) {
+        GX.sparkle(btn, { count: 24 });
       }
     }
-
-    return items;
   }
 
-  function getContext() {
-    return {
-      page: detectPage(),
-      repo: detectRepo(),
-      url: location.href,
-      items: collectItems()
-    };
+  function findHost() {
+    return (
+      document.querySelector('.AppHeader-globalBar-end') ||
+      document.querySelector('header')
+    );
   }
-
-  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-    if (msg?.type === 'GX_GET_CONTEXT') {
-      sendResponse(getContext());
-      return; // sync response
-    }
-  });
-
-  // ---- In-page button scaffold -------------------------------------------------
-
-  const BUTTON_ID = 'gx-enhance-btn';
 
   function injectButton() {
-    if (document.getElementById(BUTTON_ID)) return;
-
-    // Anchor next to the repo nav header when available, otherwise body.
-    const host =
-      document.querySelector('.AppHeader-globalBar-end') ||
-      document.querySelector('header');
-    if (!host) return;
-
-    const btn = document.createElement('button');
-    btn.id = BUTTON_ID;
-    btn.type = 'button';
-    btn.className = 'gx-enhance-btn';
-    btn.textContent = '✦ Enhance';
-    btn.title = 'GitHub Enhancements';
-    btn.addEventListener('click', () => {
-      const ctx = getContext();
-      // Placeholder action; real enhancements will hook in here.
-      console.info('[GitHub Enhancements] context:', ctx);
-      btn.animate(
-        [
-          { transform: 'scale(1)' },
-          { transform: 'scale(0.96)' },
-          { transform: 'scale(1)' }
-        ],
-        { duration: 180 }
-      );
+    if (document.getElementById(BUTTON_ID)) {
+      return;
+    }
+    const host = findHost();
+    if (!host) {
+      return;
+    }
+    const btn = GX.createButton({
+      id: BUTTON_ID,
+      label: enabled ? 'Enhanced' : 'Enhance',
+      title: 'Toggle GitHub Enhancements',
+      pressed: enabled,
+      onClick: toggle
     });
-
     host.prepend(btn);
   }
 
-  // GitHub uses Turbo/pjax navigation. Re-inject on SPA navigations.
+  function handleNavigation() {
+    if (location.href === lastUrl) {
+      return;
+    }
+    lastUrl = location.href;
+    if (enabled) {
+      GX.pages.remount();
+    }
+  }
+
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && STORAGE_KEY in changes) {
+      enabled = Boolean(changes[STORAGE_KEY].newValue);
+      applyEnhancements();
+    }
+  });
+
+  loadState();
   injectButton();
-  const observer = new MutationObserver(() => injectButton());
+
+  const observer = new MutationObserver(() => {
+    injectButton();
+    handleNavigation();
+  });
   observer.observe(document.documentElement, {
     childList: true,
     subtree: true
   });
-  window.addEventListener('turbo:load', injectButton);
-  window.addEventListener('pjax:end', injectButton);
+  window.addEventListener('turbo:load', () => {
+    injectButton();
+    handleNavigation();
+  });
+  window.addEventListener('pjax:end', () => {
+    injectButton();
+    handleNavigation();
+  });
 })();

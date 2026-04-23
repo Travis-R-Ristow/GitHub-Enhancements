@@ -21,8 +21,20 @@
   "content_scripts": [
     {
       "matches": ["https://github.com/*"],
-      "js": ["src/content/content.js"],
-      "css": ["src/content/content.css"],
+      "js": [
+        "src/content/gx-ui.js",
+        "src/content/gx-storage.js",
+        "src/content/gx-modal.js",
+        "src/content/gx-pages.js",
+        "src/content/pages/pull-request.js",
+        "src/content/pages/search.js",
+        "src/content/content.js"
+      ],
+      "css": [
+        "src/content/gx-ui.css",
+        "src/content/gx-modal.css",
+        "src/content/content.css"
+      ],
       "run_at": "document_idle"
     }
   ],
