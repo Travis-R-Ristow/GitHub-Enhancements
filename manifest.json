@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "GitHub Enhancements",
+  "version": "0.1.0",
+  "description": "Quality-of-life enhancements for github.com: popup tools and in-page buttons.",
+  "minimum_chrome_version": "116",
+
+  "action": {
+    "default_title": "GitHub Enhancements",
+    "default_popup": "src/popup/popup.html"
+  },
+
+  "background": {
+    "service_worker": "src/background/service-worker.js",
+    "type": "module"
+  },
+
+  "permissions": ["activeTab", "storage", "scripting"],
+  "host_permissions": ["https://github.com/*", "https://api.github.com/*"],
+
+  "content_scripts": [
+    {
+      "matches": ["https://github.com/*"],
+      "js": ["src/content/content.js"],
+      "css": ["src/content/content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+
+  "web_accessible_resources": [
+    {
+      "resources": ["src/content/*"],
+      "matches": ["https://github.com/*"]
+    }
+  ]
+}

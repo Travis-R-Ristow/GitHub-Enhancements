@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GitHub Enhancements</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="gx-header">
+      <h1>GitHub Enhancements</h1>
+      <span id="gx-context" class="gx-context" aria-live="polite">—</span>
+    </header>
+
+    <section class="gx-actions" aria-label="Quick actions">
+      <button class="gx-btn" data-action="open-prs">My PRs</button>
+      <button class="gx-btn" data-action="open-issues">My Issues</button>
+      <button class="gx-btn" data-action="open-notifications">
+        Notifications
+      </button>
+      <button class="gx-btn gx-btn--ghost" data-action="reload-tab">
+        Reload tab
+      </button>
+    </section>
+
+    <section class="gx-panel" aria-label="Page items">
+      <div class="gx-panel__head">
+        <h2>Detected on this page</h2>
+        <button class="gx-link" data-action="refresh">Refresh</button>
+      </div>
+      <table class="gx-table" id="gx-items">
+        <thead>
+          <tr>
+            <th scope="col">Item</th>
+            <th scope="col">Type</th>
+            <th scope="col"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="gx-empty">
+            <td colspan="3">Open a github.com tab to see items.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <footer class="gx-footer">
+      <small>v0.1.0</small>
+    </footer>
+
+    <script src="popup.js" type="module"></script>
+  </body>
+</html>
