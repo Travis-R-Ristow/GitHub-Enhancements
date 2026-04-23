@@ -18,8 +18,10 @@
     document.body.classList.toggle(BODY_CLASS, enabled);
     if (enabled) {
       GX.pages.mount();
+      GX.repoNav.mount();
     } else {
       GX.pages.unmount();
+      GX.repoNav.unmount();
     }
     applyButtonState();
   }
@@ -72,6 +74,7 @@
     lastUrl = location.href;
     if (enabled) {
       GX.pages.remount();
+      GX.repoNav.remount();
     }
   }
 

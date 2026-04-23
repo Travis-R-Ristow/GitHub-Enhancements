@@ -37,6 +37,7 @@
         "src/content/gx-storage.js",
         "src/content/gx-modal.js",
         "src/content/gx-pages.js",
+        "src/content/gx-repo-nav.js",
         "src/content/pages/pull-request.js",
         "src/content/pages/search.js",
         "src/content/content.js"
