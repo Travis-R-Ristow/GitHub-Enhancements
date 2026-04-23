@@ -112,7 +112,7 @@
     return layer;
   }
 
-  function spawnSparkle(layer, originX, originY) {
+  function spawnSparkle(layer, originX, originY, mode = 'drop') {
     const el = document.createElement('span');
     el.className = 'gx-sparkle';
     el.textContent = pickRandom(SPARKLE_GLYPHS);
@@ -124,14 +124,41 @@
     el.style.top = `${originY}px`;
     layer.append(el);
 
-    const driftX = randomBetween(-120, 120);
-    const fallY = randomBetween(160, 320);
     const rotation = randomBetween(-220, 220);
     const duration = randomBetween(1800, 2800);
     const delay = randomBetween(0, 400);
 
-    const animation = el.animate(
-      [
+    let keyframes;
+    if (mode === 'around') {
+      const angle = randomBetween(0, Math.PI * 2);
+      const burstDist = randomBetween(60, 140);
+      const burstX = Math.cos(angle) * burstDist;
+      const burstY = Math.sin(angle) * burstDist;
+      const gravityY = randomBetween(80, 160);
+      keyframes = [
+        {
+          transform: 'translate(-50%, -50%) rotate(0deg) scale(0.4)',
+          opacity: 0
+        },
+        {
+          transform: 'translate(-50%, -50%) rotate(0deg) scale(1)',
+          opacity: 1,
+          offset: 0.1
+        },
+        {
+          transform: `translate(calc(-50% + ${burstX}px), calc(-50% + ${burstY}px)) rotate(${rotation * 0.5}deg) scale(1)`,
+          opacity: 1,
+          offset: 0.4
+        },
+        {
+          transform: `translate(calc(-50% + ${burstX * 1.2}px), calc(-50% + ${burstY + gravityY}px)) rotate(${rotation}deg) scale(0.6)`,
+          opacity: 0
+        }
+      ];
+    } else {
+      const driftX = randomBetween(-120, 120);
+      const fallY = randomBetween(160, 320);
+      keyframes = [
         {
           transform: 'translate(-50%, -50%) rotate(0deg) scale(0.4)',
           opacity: 0
@@ -145,14 +172,15 @@
           transform: `translate(calc(-50% + ${driftX}px), calc(-50% + ${fallY}px)) rotate(${rotation}deg) scale(0.7)`,
           opacity: 0
         }
-      ],
-      {
-        duration,
-        delay,
-        easing: 'cubic-bezier(0.22, 0.61, 0.36, 1)',
-        fill: 'forwards'
-      }
-    );
+      ];
+    }
+
+    const animation = el.animate(keyframes, {
+      duration,
+      delay,
+      easing: 'cubic-bezier(0.22, 0.61, 0.36, 1)',
+      fill: 'forwards'
+    });
 
     animation.onfinish = () => el.remove();
   }
@@ -161,7 +189,7 @@
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
       return;
     }
-    const { count = 18 } = options;
+    const { count = 18, mode = 'drop' } = options;
     const layer = ensureSparkleLayer(target);
     const rect = target.getBoundingClientRect();
     const originX = rect.left + rect.width / 2;
@@ -169,8 +197,38 @@
 
     for (let i = 0; i < count; i += 1) {
       const jitterX = randomBetween(-rect.width / 2, rect.width / 2);
-      spawnSparkle(layer, originX + jitterX, originY);
+      spawnSparkle(layer, originX + jitterX, originY, mode);
     }
+  }
+
+  function parseSparkleAttr(value) {
+    if (!value) {
+      return { mode: 'drop', count: null };
+    }
+    const parts = value.split(':');
+    const first = parts[0];
+    if (first === 'drop' || first === 'around') {
+      return {
+        mode: first,
+        count: parts[1] ? parseInt(parts[1], 10) : null
+      };
+    }
+    const num = parseInt(first, 10);
+    if (!isNaN(num)) {
+      return { mode: 'drop', count: num };
+    }
+    return { mode: 'drop', count: null };
+  }
+
+  function sparkleAll(options = {}) {
+    const { stagger = 80, count = 18 } = options;
+    const targets = document.querySelectorAll('[data-gx-sparkle]');
+    targets.forEach((el, i) => {
+      const parsed = parseSparkleAttr(el.dataset.gxSparkle);
+      const elCount = parsed.count || count;
+      const elMode = parsed.mode;
+      setTimeout(() => sparkle(el, { count: elCount, mode: elMode }), i * stagger);
+    });
   }
 
   globalThis.GX = globalThis.GX || {};
@@ -178,6 +236,7 @@
     createButton,
     setLabel,
     setPressed,
-    sparkle
+    sparkle,
+    sparkleAll
   });
 })();

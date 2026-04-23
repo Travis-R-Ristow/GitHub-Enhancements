@@ -35,10 +35,7 @@
     await chrome.storage.local.set({ [STORAGE_KEY]: enabled });
     applyEnhancements();
     if (enabled) {
-      const btn = document.getElementById(BUTTON_ID);
-      if (btn) {
-        GX.sparkle(btn, { count: 24 });
-      }
+      GX.sparkleAll({ stagger: 80, count: 18 });
     }
   }
 
@@ -64,6 +61,7 @@
       pressed: enabled,
       onClick: toggle
     });
+    btn.setAttribute('data-gx-sparkle', 'drop:24');
     host.prepend(btn);
   }
 

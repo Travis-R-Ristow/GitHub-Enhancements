@@ -1,6 +1,6 @@
 .gx-btn {
-  --gx-btn-bg: linear-gradient(180deg, #6e7781 0%, #57606a 100%);
-  --gx-btn-bg-on: linear-gradient(180deg, #2f81f7 0%, #1f6feb 100%);
+  --gx-btn-bg: var(--gx-color-btn-bg);
+  --gx-btn-bg-on: var(--gx-color-btn-bg-on);
   --gx-btn-fg: #ffffff;
   --gx-btn-border: rgba(255, 255, 255, 0.14);
   --gx-btn-ring: #ffffff;
@@ -72,6 +72,11 @@
   fill: currentColor;
 }
 
+#gx-enhance-btn {
+  position: relative;
+  z-index: 9999;
+}
+
 .gx-sparkle-layer {
   position: fixed;
   top: 0;
@@ -79,6 +84,7 @@
   width: 0;
   height: 0;
   pointer-events: none;
+  z-index: 9998;
 }
 
 .gx-sparkle {
