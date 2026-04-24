@@ -41,21 +41,23 @@
     }
   }
 
-  function findHost() {
-    return (
-      document.querySelector('.AppHeader-globalBar-end') ||
-      document.querySelector('header')
-    );
-  }
+  const NAVBAR_ID = 'gx-navbar';
 
-  function injectButton() {
-    if (document.getElementById(BUTTON_ID)) {
+  function injectNavbar() {
+    if (document.getElementById(NAVBAR_ID)) {
       return;
     }
-    const host = findHost();
-    if (!host) {
+    if (!document.body) {
       return;
     }
+
+    const nav = document.createElement('nav');
+    nav.id = NAVBAR_ID;
+    nav.className = 'gx-navbar';
+
+    const left = document.createElement('div');
+    left.className = 'gx-navbar__left';
+
     const btn = GX.createButton({
       id: BUTTON_ID,
       label: enabled ? 'Enhanced' : 'Enhance',
@@ -64,7 +66,21 @@
       onClick: toggle
     });
     btn.setAttribute('data-gx-sparkle', 'drop:24');
-    host.prepend(btn);
+    left.append(btn);
+
+    const right = document.createElement('div');
+    right.className = 'gx-navbar__right';
+
+    right.append(
+      GX.createNavLink({
+        label: 'PR Inbox',
+        href: 'https://github.com/pulls/involves',
+        title: 'Pull requests involving you'
+      })
+    );
+
+    nav.append(left, right);
+    document.body.prepend(nav);
   }
 
   function handleNavigation() {
@@ -86,10 +102,10 @@
   });
 
   loadState();
-  injectButton();
+  injectNavbar();
 
   const observer = new MutationObserver(() => {
-    injectButton();
+    injectNavbar();
     handleNavigation();
   });
   observer.observe(document.documentElement, {
@@ -97,11 +113,11 @@
     subtree: true
   });
   window.addEventListener('turbo:load', () => {
-    injectButton();
+    injectNavbar();
     handleNavigation();
   });
   window.addEventListener('pjax:end', () => {
-    injectButton();
+    injectNavbar();
     handleNavigation();
   });
 })();

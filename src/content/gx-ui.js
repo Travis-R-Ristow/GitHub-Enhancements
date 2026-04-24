@@ -231,9 +231,27 @@
     });
   }
 
+  function createNavLink(options = {}) {
+    const { label = '', href = '#', title = '', className } = options;
+    const a = document.createElement('a');
+    a.className = 'gx-nav-link';
+    if (className) {
+      for (const c of String(className).split(/\s+/).filter(Boolean)) {
+        a.classList.add(c);
+      }
+    }
+    a.href = href;
+    a.textContent = label;
+    if (title) {
+      a.title = title;
+    }
+    return a;
+  }
+
   globalThis.GX = globalThis.GX || {};
   Object.assign(globalThis.GX, {
     createButton,
+    createNavLink,
     setLabel,
     setPressed,
     sparkle,
