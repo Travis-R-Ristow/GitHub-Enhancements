@@ -242,8 +242,6 @@
   left: 0;
   margin-top: 4px;
   min-width: 200px;
-  max-height: 260px;
-  overflow-y: auto;
   background: var(--gx-color-bg);
   border: 1px solid var(--gx-color-border);
   border-radius: 6px;
@@ -384,4 +382,20 @@
 
 .gx-dimmed:hover {
   opacity: 0.7;
+}
+
+#docked-side-panel-content .gx-author-dropdown__toggle {
+  min-width: 100px;
+  font-size: 12px;
+  padding: 4px 8px;
+}
+
+#docked-side-panel-content .gx-author-dropdown__menu {
+  z-index: 1000;
+  left: auto;
+  right: 0;
+}
+
+#docked-side-panel-content .gx-author-pills {
+  padding: 0 8px 4px;
 }

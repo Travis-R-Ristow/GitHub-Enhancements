@@ -26,7 +26,7 @@
     "type": "module"
   },
 
-  "permissions": ["activeTab", "storage", "scripting"],
+  "permissions": ["storage"],
   "host_permissions": ["https://github.com/*", "https://api.github.com/*"],
 
   "content_scripts": [
