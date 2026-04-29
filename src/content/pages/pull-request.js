@@ -461,19 +461,25 @@
     }
 
     const timeline = commitsList.firstElementChild;
-    if (!timeline || timeline.children.length <= 1) {
+    if (!timeline) {
       return false;
     }
 
-    reverseChildren(timeline, Array.from(timeline.children));
+    if (timeline.children.length > 1) {
+      reverseChildren(timeline, Array.from(timeline.children));
+    }
 
+    let reversed = false;
     timeline
       .querySelectorAll('[data-listview-component="items-list"]')
       .forEach((ul) => {
-        reverseChildren(ul, Array.from(ul.children));
+        if (ul.children.length > 1) {
+          reverseChildren(ul, Array.from(ul.children));
+          reversed = true;
+        }
       });
 
-    return true;
+    return timeline.children.length > 1 || reversed;
   }
 
   function mountReverseOrder() {

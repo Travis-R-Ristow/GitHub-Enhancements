@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "GitHub Enhancements",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Quality-of-life enhancements for github.com: popup tools and in-page buttons.",
   "minimum_chrome_version": "116",
 
