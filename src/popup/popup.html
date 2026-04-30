@@ -6,5 +6,49 @@
     <title>GitHub Enhancements</title>
     <link rel="stylesheet" href="popup.css" />
   </head>
-  <body></body>
+  <body>
+    <header class="gx-popup-header">
+      <span class="gx-popup-mark">✦</span>
+      <h1 class="gx-popup-title">GitHub Enhancements</h1>
+    </header>
+
+    <nav class="gx-popup-tabs" role="tablist">
+      <button class="gx-popup-tab gx-popup-tab--active" role="tab" aria-selected="true" data-tab="main">Main</button>
+      <button class="gx-popup-tab" role="tab" aria-selected="false" data-tab="storage">Storage</button>
+      <button class="gx-popup-tab" role="tab" aria-selected="false" data-tab="about">About</button>
+    </nav>
+
+    <section class="gx-popup-panel gx-popup-enhance" data-panel="main">
+      <div class="gx-popup-sparkle-layer" aria-hidden="true"></div>
+      <button id="gx-enhance" type="button" class="gx-popup-enhance-btn">
+        <span class="gx-popup-enhance-btn__mark">✦</span>
+        <span class="gx-popup-enhance-btn__label">Enhance</span>
+      </button>
+    </section>
+
+    <section class="gx-popup-panel gx-popup-storage" data-panel="storage" hidden>
+      <h2 class="gx-popup-section__title">Storage</h2>
+      <div class="gx-popup-storage__row">
+        <button id="gx-export" type="button" class="gx-popup-btn">Export</button>
+        <button id="gx-import" type="button" class="gx-popup-btn">Import</button>
+        <input id="gx-import-file" type="file" accept="application/json" hidden />
+        <button id="gx-hard-delete" type="button" class="gx-popup-btn gx-popup-btn--danger">Hard Delete</button>
+      </div>
+      <div id="gx-delete-confirm" class="gx-popup-confirm" hidden>
+        <p>Are you sure? This will delete <strong>all</strong> GHE data.</p>
+        <div class="gx-popup-confirm__actions">
+          <button id="gx-delete-yes" type="button" class="gx-popup-btn gx-popup-btn--danger">Yes, delete everything</button>
+          <button id="gx-delete-no" type="button" class="gx-popup-btn">Cancel</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="gx-popup-panel gx-popup-privacy" data-panel="about" hidden>
+      <h2 class="gx-popup-section__title">About</h2>
+      <p>GitHub Enhancements (GHE) adds quality-of-life features to github.com &mdash; filtering, navigation shortcuts, and custom toolbar buttons.</p>
+      <p>No data is collected. This tool does not have an API or database &mdash; everything stays in your browser.</p>
+    </section>
+
+    <script src="popup.js"></script>
+  </body>
 </html>
