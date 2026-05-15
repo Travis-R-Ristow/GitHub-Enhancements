@@ -100,6 +100,19 @@
   animation: gx-pulse-remove 0.5s ease-out;
 }
 
+@keyframes gx-hash-highlight {
+  0% {
+    background-color: rgba(255, 211, 61, 0.35);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.gx-hash-highlight {
+  animation: gx-hash-highlight 1.5s ease-out;
+}
+
 .gx-floating-btn {
   position: fixed;
   right: 16px;

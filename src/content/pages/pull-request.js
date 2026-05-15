@@ -8,6 +8,7 @@
   const FILTER_BAR_ID = 'gx-pr-filter-bar';
 
   const COLLAPSE_TOGGLE_CLASS = 'gx-collapse-toggle';
+  const REVERSED_ATTR = 'data-gx-reversed';
 
   const CHEVRON_DOWN =
     '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M12.78 5.22a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L3.22 6.28a.75.75 0 0 1 1.06-1.06L8 8.94l3.72-3.72a.75.75 0 0 1 1.06 0Z"/></svg>';
@@ -18,6 +19,42 @@
     '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5a.75.75 0 0 1 .53.22l5 5a.75.75 0 0 1-1.06 1.06L8.75 5.06V13a.75.75 0 0 1-1.5 0V5.06L3.53 8.78a.75.75 0 1 1-1.06-1.06l5-5A.75.75 0 0 1 8 2.5Z"/></svg>';
   const ARROW_DOWN =
     '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13.5a.75.75 0 0 1-.53-.22l-5-5a.75.75 0 1 1 1.06-1.06l3.72 3.72V3a.75.75 0 0 1 1.5 0v7.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-5 5a.75.75 0 0 1-.53.22Z"/></svg>';
+
+  function waitForMount(tryFn) {
+    let cleanup = null;
+    let observer = null;
+
+    function attempt() {
+      if (cleanup) {
+        return;
+      }
+      const result = tryFn();
+      if (result) {
+        cleanup = result;
+        if (observer) {
+          observer.disconnect();
+          observer = null;
+        }
+      }
+    }
+
+    attempt();
+
+    if (!cleanup) {
+      observer = new MutationObserver(attempt);
+      observer.observe(document.body, { childList: true, subtree: true });
+    }
+
+    return () => {
+      if (observer) {
+        observer.disconnect();
+        observer = null;
+      }
+      if (typeof cleanup === 'function') {
+        cleanup();
+      }
+    };
+  }
 
   function match(url) {
     return PR_PATH.test(new URL(url).pathname);
@@ -184,9 +221,8 @@
     menu.appendChild(list);
 
     const selected = new Set();
-    const checkboxes = new Map();
-    const items = [];
-    const authors = getAllAuthors();
+    let checkboxes = new Map();
+    let items = [];
 
     function updateToggleLabel() {
       if (selected.size === 0) {
@@ -228,51 +264,59 @@
       });
     }
 
-    authors.forEach((author) => {
-      const label = document.createElement('label');
-      label.className = 'gx-author-dropdown__item';
+    function rebuildList() {
+      list.textContent = '';
+      checkboxes = new Map();
+      items = [];
+      const authors = getAllAuthors();
 
-      const checkbox = document.createElement('input');
-      checkbox.type = 'checkbox';
-      checkbox.value = author;
-      checkboxes.set(author, checkbox);
+      authors.forEach((author) => {
+        const label = document.createElement('label');
+        label.className = 'gx-author-dropdown__item';
 
-      checkbox.addEventListener('change', () => {
-        if (checkbox.checked) {
-          selected.add(author);
-        } else {
-          selected.delete(author);
-        }
-        updateToggleLabel();
-        renderPills();
-        onFilter();
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.value = author;
+        checkbox.checked = selected.has(author);
+        checkboxes.set(author, checkbox);
+
+        checkbox.addEventListener('change', () => {
+          if (checkbox.checked) {
+            selected.add(author);
+          } else {
+            selected.delete(author);
+          }
+          updateToggleLabel();
+          renderPills();
+          onFilter();
+        });
+
+        const span = document.createElement('span');
+        span.textContent = author;
+
+        label.append(checkbox, span);
+        list.appendChild(label);
+        items.push({ label, author });
       });
-
-      const span = document.createElement('span');
-      span.textContent = author;
-
-      label.append(checkbox, span);
-      list.appendChild(label);
-      items.push({ label, author });
-    });
+    }
 
     toggle.addEventListener('click', () => {
       const opening = !wrapper.classList.contains('gx-author-dropdown--open');
       wrapper.classList.toggle('gx-author-dropdown--open');
       if (opening) {
+        rebuildList();
         searchInput.value = '';
-        items.forEach(({ label }) => {
-          label.style.display = '';
-        });
         requestAnimationFrame(() => searchInput.focus());
       }
     });
 
-    document.addEventListener('click', (e) => {
+    function onDocumentClick(e) {
       if (!wrapper.contains(e.target)) {
         wrapper.classList.remove('gx-author-dropdown--open');
       }
-    });
+    }
+
+    document.addEventListener('click', onDocumentClick);
 
     wrapper.append(toggle, menu);
     wrapper.getSelected = () => selected;
@@ -284,43 +328,48 @@
         cb.checked = false;
       });
     };
+    wrapper.destroy = () => {
+      document.removeEventListener('click', onDocumentClick);
+    };
 
     return wrapper;
   }
 
   function mountCollapseToggle() {
-    const desc = getDescriptionItem();
-    if (!desc) {
-      return null;
-    }
-    const actions = desc.querySelector('.timeline-comment-actions');
-    if (!actions) {
-      return null;
-    }
-    if (actions.querySelector('.' + COLLAPSE_TOGGLE_CLASS)) {
-      return null;
-    }
+    return waitForMount(() => {
+      const desc = getDescriptionItem();
+      if (!desc) {
+        return null;
+      }
+      const actions = desc.querySelector('.timeline-comment-actions');
+      if (!actions) {
+        return null;
+      }
+      if (actions.querySelector('.' + COLLAPSE_TOGGLE_CLASS)) {
+        return null;
+      }
 
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = COLLAPSE_TOGGLE_CLASS;
-    btn.title = 'Collapse description';
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = COLLAPSE_TOGGLE_CLASS;
+      btn.title = 'Collapse description';
 
-    const icon = document.createElement('span');
-    icon.className = 'gx-collapse-toggle__icon';
-    icon.innerHTML = CHEVRON_DOWN;
+      const icon = document.createElement('span');
+      icon.className = 'gx-collapse-toggle__icon';
+      icon.innerHTML = CHEVRON_DOWN;
 
-    btn.appendChild(icon);
-    btn.addEventListener('click', () => {
-      setDescriptionCollapsed(!isDescriptionCollapsed());
-      updateCollapseToggle();
+      btn.appendChild(icon);
+      btn.addEventListener('click', () => {
+        setDescriptionCollapsed(!isDescriptionCollapsed());
+        updateCollapseToggle();
+      });
+
+      actions.prepend(btn);
+
+      return () => {
+        btn.remove();
+      };
     });
-
-    actions.prepend(btn);
-
-    return () => {
-      btn.remove();
-    };
   }
 
   function updateCollapseToggle() {
@@ -383,6 +432,7 @@
 
     topRow.append(authorDropdown, searchInput, clearBtn);
     bar.append(topRow, pillsContainer);
+    bar._gxDropdown = authorDropdown;
     return bar;
   }
 
@@ -391,27 +441,32 @@
       return null;
     }
 
-    const discussion = getDiscussionContainer();
-    if (!discussion) {
-      return null;
-    }
-
-    const bar = createFilterBar();
-    if (!bar) {
-      return null;
-    }
-
-    discussion.insertAdjacentElement('beforebegin', bar);
-
-    return () => {
-      const existing = document.getElementById(FILTER_BAR_ID);
-      if (existing) {
-        existing.remove();
+    return waitForMount(() => {
+      const discussion = getDiscussionContainer();
+      if (!discussion) {
+        return null;
       }
-      getTimelineItems().forEach((item) => {
-        item.classList.remove('gx-dimmed');
-      });
-    };
+
+      const bar = createFilterBar();
+      if (!bar) {
+        return null;
+      }
+
+      discussion.insertAdjacentElement('beforebegin', bar);
+
+      return () => {
+        if (bar._gxDropdown) {
+          bar._gxDropdown.destroy();
+        }
+        const existing = document.getElementById(FILTER_BAR_ID);
+        if (existing) {
+          existing.remove();
+        }
+        getTimelineItems().forEach((item) => {
+          item.classList.remove('gx-dimmed');
+        });
+      };
+    });
   }
 
   function isChangesTab() {
@@ -432,7 +487,36 @@
     }
   }
 
+  function getItemTime(item) {
+    const el = item.querySelector('relative-time[datetime], time[datetime]');
+    return el ? el.getAttribute('datetime') : '';
+  }
+
+  function sortTimeline(parent, items, descending) {
+    const indexed = items.map((item, i) => ({ item, time: getItemTime(item), i }));
+    indexed.sort((a, b) => {
+      if (a.time && b.time) {
+        const cmp = a.time.localeCompare(b.time);
+        return descending ? -cmp : cmp;
+      }
+      if (a.time) {
+        return -1;
+      }
+      if (b.time) {
+        return 1;
+      }
+      return a.i - b.i;
+    });
+    for (const { item } of indexed) {
+      parent.appendChild(item);
+    }
+  }
+
   function reverseTimelineOrder() {
+    const container = getDiscussionContainer();
+    if (!container) {
+      return false;
+    }
     const items = getTimelineItems();
     if (items.length <= 1) {
       return false;
@@ -448,16 +532,43 @@
     });
 
     groups.forEach((groupItems, parent) => {
-      reverseChildren(parent, groupItems);
+      sortTimeline(parent, groupItems, true);
     });
 
+    container.setAttribute(REVERSED_ATTR, '');
     return true;
+  }
+
+  function restoreTimelineOrder() {
+    const container = getDiscussionContainer();
+    if (!container || !container.hasAttribute(REVERSED_ATTR)) {
+      return;
+    }
+    container.removeAttribute(REVERSED_ATTR);
+    const items = getTimelineItems();
+    if (items.length <= 1) {
+      return;
+    }
+    const groups = new Map();
+    items.forEach((item) => {
+      const parent = item.parentNode;
+      if (!groups.has(parent)) {
+        groups.set(parent, []);
+      }
+      groups.get(parent).push(item);
+    });
+    groups.forEach((groupItems, parent) => {
+      sortTimeline(parent, groupItems, false);
+    });
   }
 
   function reverseCommitsOrder() {
     const commitsList = document.querySelector('[data-testid="commits-list"]');
     if (!commitsList) {
       return false;
+    }
+    if (commitsList.hasAttribute(REVERSED_ATTR)) {
+      return true;
     }
 
     const timeline = commitsList.firstElementChild;
@@ -479,35 +590,70 @@
         }
       });
 
-    return timeline.children.length > 1 || reversed;
+    const success = timeline.children.length > 1 || reversed;
+    if (success) {
+      commitsList.setAttribute(REVERSED_ATTR, '');
+    }
+    return success;
+  }
+
+  function restoreCommitsOrder() {
+    const commitsList = document.querySelector('[data-testid="commits-list"]');
+    if (!commitsList || !commitsList.hasAttribute(REVERSED_ATTR)) {
+      return;
+    }
+    commitsList.removeAttribute(REVERSED_ATTR);
+    const timeline = commitsList.firstElementChild;
+    if (!timeline) {
+      return;
+    }
+    if (timeline.children.length > 1) {
+      reverseChildren(timeline, Array.from(timeline.children));
+    }
+    timeline
+      .querySelectorAll('[data-listview-component="items-list"]')
+      .forEach((ul) => {
+        if (ul.children.length > 1) {
+          reverseChildren(ul, Array.from(ul.children));
+        }
+      });
   }
 
   function mountReverseOrder() {
-    if (!isConversationTab() && !isCommitsTab()) {
+    const onConversation = isConversationTab();
+    const onCommits = isCommitsTab();
+
+    if (!onConversation && !onCommits) {
       return null;
     }
 
     let done = false;
     let observer = null;
+    let lastItemCount = 0;
 
     function tryReverse() {
-      if (done) {
-        return;
-      }
-      if (isConversationTab()) {
-        done = reverseTimelineOrder();
-      } else if (isCommitsTab()) {
+      if (onConversation) {
+        const items = getTimelineItems();
+        if (items.length > 1 && items.length !== lastItemCount) {
+          lastItemCount = items.length;
+          reverseTimelineOrder();
+          done = true;
+        }
+      } else if (onCommits) {
+        if (done) {
+          return;
+        }
         done = reverseCommitsOrder();
-      }
-      if (done && observer) {
-        observer.disconnect();
-        observer = null;
+        if (done && observer) {
+          observer.disconnect();
+          observer = null;
+        }
       }
     }
 
     tryReverse();
 
-    if (!done) {
+    if (!done || onConversation) {
       observer = new MutationObserver(tryReverse);
       observer.observe(document.body, { childList: true, subtree: true });
     }
@@ -515,13 +661,12 @@
     return () => {
       if (observer) {
         observer.disconnect();
+        observer = null;
       }
-      if (done) {
-        if (isConversationTab()) {
-          reverseTimelineOrder();
-        } else if (isCommitsTab()) {
-          reverseCommitsOrder();
-        }
+      if (onConversation) {
+        restoreTimelineOrder();
+      } else if (onCommits) {
+        restoreCommitsOrder();
       }
     };
   }
@@ -903,6 +1048,99 @@
     return () => observer.disconnect();
   }
 
+  const HASH_PATTERN = /^#?(diff-[a-f0-9]+)((?:[RL]\d+)(?:-[RL]\d+)?)?$/;
+  const HIGHLIGHT_CLASS = 'gx-hash-highlight';
+
+  function parseHash(hash) {
+    if (!hash) {
+      return null;
+    }
+    const raw = hash.startsWith('#') ? hash.slice(1) : hash;
+    const m = HASH_PATTERN.exec(raw);
+    if (!m) {
+      return null;
+    }
+    return { diffId: m[1], lineSuffix: m[2] || null };
+  }
+
+  function expandCollapsedDiff(diffEl) {
+    const toggle =
+      diffEl.querySelector('button[aria-label="Toggle diff contents"]') ||
+      diffEl.querySelector('.js-details-target');
+    if (toggle && toggle.getAttribute('aria-expanded') === 'false') {
+      toggle.click();
+    }
+  }
+
+  function applyHighlight(el) {
+    el.classList.remove(HIGHLIGHT_CLASS);
+    void el.offsetWidth;
+    el.classList.add(HIGHLIGHT_CLASS);
+    el.addEventListener('animationend', () => {
+      el.classList.remove(HIGHLIGHT_CLASS);
+    }, { once: true });
+  }
+
+  function navigateToHash(hash) {
+    const parsed = parseHash(hash);
+    if (!parsed) {
+      return;
+    }
+
+    const diffEl = document.getElementById(parsed.diffId);
+    if (!diffEl) {
+      return;
+    }
+
+    expandCollapsedDiff(diffEl);
+
+    let target = diffEl;
+
+    if (parsed.lineSuffix) {
+      const lineId = parsed.diffId + parsed.lineSuffix;
+      const lineEl = document.getElementById(lineId);
+      if (lineEl) {
+        target = lineEl.closest('tr') || lineEl;
+      }
+    }
+
+    requestAnimationFrame(() => {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      applyHighlight(target);
+    });
+  }
+
+  function watchForHashNavigation() {
+    if (!isChangesTab()) {
+      return null;
+    }
+
+    function onHashChange() {
+      navigateToHash(location.hash);
+    }
+
+    window.addEventListener('hashchange', onHashChange);
+
+    if (location.hash) {
+      waitForMount(() => {
+        const parsed = parseHash(location.hash);
+        if (!parsed) {
+          return true;
+        }
+        const el = document.getElementById(parsed.diffId);
+        if (!el) {
+          return null;
+        }
+        navigateToHash(location.hash);
+        return true;
+      });
+    }
+
+    return () => {
+      window.removeEventListener('hashchange', onHashChange);
+    };
+  }
+
   function scrollTo(y) {
     window.scrollTo({ top: y, behavior: 'smooth' });
   }
@@ -977,6 +1215,7 @@
     const cleanupConversation = watchForCommentViewMode();
     const cleanupPanelFilter = watchForPanelFilter();
     const cleanupReverse = mountReverseOrder();
+    const cleanupHash = watchForHashNavigation();
 
     return () => {
       cleanupTop();
@@ -997,6 +1236,9 @@
       }
       if (cleanupReverse) {
         cleanupReverse();
+      }
+      if (cleanupHash) {
+        cleanupHash();
       }
       setDescriptionCollapsed(false);
     };

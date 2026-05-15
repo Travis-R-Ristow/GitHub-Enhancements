@@ -416,6 +416,12 @@
     injectNavbar();
     handleNavigation();
   });
+  window.addEventListener('turbo:render', () => {
+    handleNavigation();
+  });
+  window.addEventListener('popstate', () => {
+    handleNavigation();
+  });
   window.addEventListener('pjax:end', () => {
     injectNavbar();
     handleNavigation();
