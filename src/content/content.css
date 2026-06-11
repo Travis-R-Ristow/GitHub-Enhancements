@@ -411,6 +411,21 @@
   margin-right: 0;
 }
 
+.gx-nav-link--disabled,
+.gx-nav-link--disabled:hover {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: none;
+  filter: none;
+}
+
+.gx-navbar-modal-hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  opacity: 0.7;
+}
+
 .gx-navbar-modal-form {
   display: flex;
   gap: 8px;

@@ -40,6 +40,8 @@ Add your own links to the top navbar for quick access to any URL. Click **Add Bu
 - Drag and drop to reorder buttons
 - Delete buttons you no longer need
 
+URLs support tokens resolved from the current page: `{repo}` and `{prNumber}`. Tokens work with any scheme, including custom deep links. A button automatically disables itself on pages where its tokens can't be resolved (for example, a `{prNumber}` button is greyed out when you're not on a pull request).
+
 ### Pull Request & Issue Enhancements
 
 #### Comment Author Filter

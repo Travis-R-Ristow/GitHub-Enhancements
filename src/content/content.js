@@ -55,8 +55,59 @@
     await GX.storage.set(NAV_BUTTONS_KEY, list);
   }
 
+  const TOKEN_RE = /\{(\w+)\}/g;
+  const RESERVED_OWNERS = new Set([
+    'settings', 'notifications', 'marketplace', 'explore', 'search', 'pulls',
+    'issues', 'new', 'organizations', 'sponsors', 'about', 'contact',
+    'features', 'topics', 'collections', 'trending', 'codespaces', 'dashboard'
+  ]);
+
+  function pageContext() {
+    const ctx = { repo: '', prNumber: '' };
+    const parts = location.pathname.split('/').filter(Boolean);
+    const nwo = document.querySelector('meta[name="octolytics-dimension-repository_nwo"]');
+
+    if (nwo && nwo.content.includes('/')) {
+      ctx.repo = nwo.content.split('/')[1];
+    } else if (parts.length >= 2 && !RESERVED_OWNERS.has(parts[0])) {
+      ctx.repo = parts[1];
+    }
+
+    if (parts.length >= 4 && (parts[2] === 'pull' || parts[2] === 'issues') && /^\d+$/.test(parts[3])) {
+      ctx.prNumber = parts[3];
+    }
+
+    return ctx;
+  }
+
+  function resolveTemplate(template, ctx) {
+    const missing = [];
+    const resolved = template.replace(TOKEN_RE, (match, key) => {
+      const value = ctx[key];
+      if (value === undefined || value === '') {
+        if (!missing.includes(key)) {
+          missing.push(key);
+        }
+        return match;
+      }
+      return encodeURIComponent(value);
+    });
+    return { resolved, missing };
+  }
+
   function createCustomNavLink(def) {
-    const a = GX.createNavLink({ label: def.label, href: def.url });
+    const { resolved, missing } = resolveTemplate(def.url, pageContext());
+
+    if (missing.length > 0) {
+      const span = document.createElement('span');
+      span.className = 'gx-nav-link gx-nav-link--disabled gx-navbar-custom-link';
+      span.textContent = def.label;
+      span.setAttribute('aria-disabled', 'true');
+      span.title = `Unavailable here — needs: ${missing.map((k) => `{${k}}`).join(', ')}`;
+      return span;
+    }
+
+    const a = GX.createNavLink({ label: def.label, href: resolved });
     a.classList.add('gx-navbar-custom-link');
 
     if (def.openMode === 'newTab') {
@@ -65,7 +116,7 @@
     } else if (def.openMode === 'newWindow') {
       a.addEventListener('click', (e) => {
         e.preventDefault();
-        window.open(def.url, '_blank', 'noopener,width=1200,height=800');
+        window.open(resolved, '_blank', 'noopener,width=1200,height=800');
       });
     }
 
@@ -93,8 +144,7 @@
 
     const urlInput = document.createElement('input');
     urlInput.className = 'gx-input';
-    urlInput.type = 'url';
-    urlInput.placeholder = 'https://...';
+    urlInput.placeholder = 'https://... or use {repo} / {prNumber}';
     urlInput.required = true;
 
     const modeSelect = document.createElement('select');
@@ -113,6 +163,11 @@
 
     form.append(labelInput, urlInput, modeSelect, addBtn);
     body.append(form);
+
+    const hint = document.createElement('small');
+    hint.className = 'gx-navbar-modal-hint';
+    hint.textContent = 'Tokens: {repo}, {prNumber} — resolved from the current page. Buttons disable when a token is unavailable.';
+    body.append(hint);
 
     const list = document.createElement('ul');
     list.className = 'gx-navbar-modal-list';
@@ -246,7 +301,6 @@
 
       const urlIn = document.createElement('input');
       urlIn.className = 'gx-input';
-      urlIn.type = 'url';
       urlIn.value = item.url;
 
       const modeIn = createModeSelect(item.openMode || 'tab');
@@ -385,6 +439,10 @@
     if (enabled) {
       GX.pages.remount();
       GX.repoNav.remount();
+    }
+    const container = document.querySelector('.gx-navbar__custom-links');
+    if (container) {
+      renderCustomLinks(container);
     }
   }
 
