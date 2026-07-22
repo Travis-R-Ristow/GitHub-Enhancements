@@ -126,3 +126,71 @@
   pointer-events: none;
   will-change: transform, opacity;
 }
+
+.gx-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 0 8px;
+  padding: 3px 8px;
+  font:
+    600 12px/1.4 -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  color: var(--fgColor-muted, #848d97);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    color 0.12s ease,
+    background 0.12s ease;
+}
+
+.gx-switch:hover {
+  background: var(--bgColor-neutral-muted, rgba(101, 108, 118, 0.2));
+}
+
+.gx-switch:focus-visible {
+  outline: 2px solid var(--focus-outlineColor, #2f81f7);
+  outline-offset: 2px;
+}
+
+.gx-switch__label {
+  letter-spacing: 0.01em;
+}
+
+.gx-switch__track {
+  position: relative;
+  flex-shrink: 0;
+  width: 26px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--bgColor-neutral-emphasis, #6e7681);
+  transition: background 0.16s ease;
+}
+
+.gx-switch__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ffffff;
+  transition: transform 0.16s ease;
+}
+
+.gx-switch--on {
+  color: var(--fgColor-done, #a371f7);
+}
+
+.gx-switch--on .gx-switch__track {
+  background: var(--fgColor-done, #a371f7);
+}
+
+.gx-switch--on .gx-switch__thumb {
+  transform: translateX(10px);
+}

@@ -1141,6 +1141,180 @@
     };
   }
 
+  const DIFF_HEADER_SELECTOR =
+    '[class*="DiffFileHeader-module__diff-file-header"]';
+  const VIEWED_BUTTON_SELECTOR = 'button[class*="MarkAsViewedButton-module"]';
+
+  function getScrollParent(el) {
+    let node = el.parentElement;
+    while (node) {
+      const style = getComputedStyle(node);
+      if (
+        /(auto|scroll|overlay)/.test(style.overflowY) &&
+        node.scrollHeight > node.clientHeight
+      ) {
+        return node;
+      }
+      node = node.parentElement;
+    }
+    return null;
+  }
+
+  function getViewedButton(header) {
+    return header.querySelector(VIEWED_BUTTON_SELECTOR);
+  }
+
+  function markViewed(header) {
+    const btn = getViewedButton(header);
+    if (!btn) {
+      return;
+    }
+    if (btn.getAttribute('aria-pressed') === 'true') {
+      return;
+    }
+    btn.click();
+  }
+
+  const AUTO_VIEWED_KEY = 'gx-auto-viewed';
+  const AUTO_VIEWED_TOGGLE_ID = 'gx-auto-viewed-toggle';
+  const VIEWED_PROGRESS_SELECTOR =
+    '[class*="PullRequestFilesToolbar-module__hide-viewed-progress-on-small"]';
+
+  function createAutoViewedSwitch(onToggle) {
+    const el = document.createElement('button');
+    el.type = 'button';
+    el.id = AUTO_VIEWED_TOGGLE_ID;
+    el.className = 'gx-switch';
+    el.setAttribute('role', 'switch');
+
+    const label = document.createElement('span');
+    label.className = 'gx-switch__label';
+    label.textContent = 'Auto Viewed';
+
+    const track = document.createElement('span');
+    track.className = 'gx-switch__track';
+
+    const thumb = document.createElement('span');
+    thumb.className = 'gx-switch__thumb';
+    track.appendChild(thumb);
+
+    el.append(label, track);
+    el.addEventListener('click', onToggle);
+    return el;
+  }
+
+  function mountAutoViewed() {
+    if (!isChangesTab()) {
+      return null;
+    }
+
+    let enabled = true;
+    let toggle = null;
+    const observed = new WeakSet();
+    let io = null;
+
+    function onIntersect(entries) {
+      if (!enabled) {
+        return;
+      }
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          return;
+        }
+        const rootTop = entry.rootBounds ? entry.rootBounds.top : 0;
+        if (entry.boundingClientRect.top < rootTop) {
+          markViewed(entry.target);
+        }
+      });
+    }
+
+    function ensureObserver(sample) {
+      if (io) {
+        return;
+      }
+      io = new IntersectionObserver(onIntersect, {
+        root: getScrollParent(sample),
+        threshold: 0
+      });
+    }
+
+    function discoverHeaders() {
+      document.querySelectorAll(DIFF_HEADER_SELECTOR).forEach((header) => {
+        if (observed.has(header)) {
+          return;
+        }
+        ensureObserver(header);
+        observed.add(header);
+        io.observe(header);
+      });
+    }
+
+    function refreshToggle() {
+      if (!toggle) {
+        return;
+      }
+      toggle.classList.toggle('gx-switch--on', enabled);
+      toggle.setAttribute('aria-checked', String(enabled));
+      toggle.title = enabled
+        ? 'Auto-mark files viewed as you scroll past them (on)'
+        : 'Auto-mark files viewed as you scroll past them (off)';
+    }
+
+    function ensureToggle() {
+      const progress = document.querySelector(VIEWED_PROGRESS_SELECTOR);
+      if (!progress) {
+        return;
+      }
+      if (document.getElementById(AUTO_VIEWED_TOGGLE_ID)) {
+        return;
+      }
+      toggle = createAutoViewedSwitch(() => {
+        enabled = !enabled;
+        GX.storage.set(AUTO_VIEWED_KEY, enabled);
+        refreshToggle();
+        if (enabled) {
+          discoverHeaders();
+        }
+      });
+      progress.insertAdjacentElement('afterend', toggle);
+      refreshToggle();
+    }
+
+    const mo = new MutationObserver(() => {
+      discoverHeaders();
+      ensureToggle();
+    });
+    mo.observe(document.body, { childList: true, subtree: true });
+
+    const unsubscribe = GX.storage.onChange(AUTO_VIEWED_KEY, (value) => {
+      enabled = value !== false;
+      refreshToggle();
+      if (enabled) {
+        discoverHeaders();
+      }
+    });
+
+    GX.storage.get(AUTO_VIEWED_KEY, true).then((value) => {
+      enabled = value !== false;
+      refreshToggle();
+      discoverHeaders();
+      ensureToggle();
+    });
+
+    return () => {
+      mo.disconnect();
+      unsubscribe();
+      if (io) {
+        io.disconnect();
+        io = null;
+      }
+      if (toggle) {
+        toggle.remove();
+        toggle = null;
+      }
+    };
+  }
+
   function scrollTo(y) {
     window.scrollTo({ top: y, behavior: 'smooth' });
   }
@@ -1216,6 +1390,7 @@
     const cleanupPanelFilter = watchForPanelFilter();
     const cleanupReverse = mountReverseOrder();
     const cleanupHash = watchForHashNavigation();
+    const cleanupAutoViewed = mountAutoViewed();
 
     return () => {
       cleanupTop();
@@ -1239,6 +1414,9 @@
       }
       if (cleanupHash) {
         cleanupHash();
+      }
+      if (cleanupAutoViewed) {
+        cleanupAutoViewed();
       }
       setDescriptionCollapsed(false);
     };
