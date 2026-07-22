@@ -151,6 +151,17 @@
   transform: scale(0.8);
 }
 
+.gx-change-base-btn {
+  flex: 0 0 auto;
+  margin: 0 0 0 8px;
+  vertical-align: middle;
+}
+
+.gx-change-base-btn--editing {
+  --gx-btn-border: rgba(248, 81, 73, 0.5);
+  color: #f85149;
+}
+
 .gx-pr-filter-bar {
   display: flex;
   flex-direction: column;

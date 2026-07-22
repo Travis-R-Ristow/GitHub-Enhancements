@@ -1315,6 +1315,148 @@
     };
   }
 
+  const CHANGE_BASE_CLASS = 'gx-change-base-btn';
+  const SUMMARY_SELECTOR =
+    '[class*="PullRequestHeaderSummary-module__summaryContainer"]';
+  const BASE_REF_BTN_SELECTOR =
+    '[class*="RefSelectorAnchoredOverlay-module__RefSelectorOverlayBtn"]';
+
+  function findEditPencil() {
+    const numEl = Array.from(document.querySelectorAll('span, bdi, a')).find(
+      (el) => el.children.length === 0 && /^#\d+$/.test(el.textContent.trim())
+    );
+    if (!numEl) {
+      return null;
+    }
+    let node = numEl;
+    for (let i = 0; i < 6 && node; i += 1) {
+      node = node.parentElement;
+      if (!node) {
+        break;
+      }
+      const btn = node.querySelector('button[class*="prc-Button-IconButton"]');
+      if (btn) {
+        return btn;
+      }
+    }
+    return null;
+  }
+
+  function isEditingBase() {
+    return Boolean(document.querySelector(BASE_REF_BTN_SELECTOR));
+  }
+
+  function findCancelButton() {
+    return Array.from(document.querySelectorAll('button')).find(
+      (b) => b.offsetParent && b.textContent.trim() === 'Cancel'
+    );
+  }
+
+  function openBaseSelector() {
+    const existing = document.querySelector(BASE_REF_BTN_SELECTOR);
+    if (existing) {
+      existing.click();
+      return;
+    }
+    const pencil = findEditPencil();
+    if (!pencil) {
+      return;
+    }
+    pencil.click();
+    const start = Date.now();
+    const timer = setInterval(() => {
+      const btn = document.querySelector(BASE_REF_BTN_SELECTOR);
+      if (btn) {
+        clearInterval(timer);
+        btn.click();
+      } else if (Date.now() - start > 2500) {
+        clearInterval(timer);
+      }
+    }, 60);
+  }
+
+  function mountChangeBase() {
+    if (!isConversationTab()) {
+      return null;
+    }
+
+    return waitForMount(() => {
+      const summary = document.querySelector(SUMMARY_SELECTOR);
+      if (!summary) {
+        return null;
+      }
+      if (document.querySelector('.' + CHANGE_BASE_CLASS)) {
+        return null;
+      }
+
+      const btn = GX.createButton({
+        label: 'Change target branch',
+        title: 'Change target branch',
+        variant: 'ghost',
+        onClick: () => {
+          if (isEditingBase()) {
+            const cancel = findCancelButton();
+            if (cancel) {
+              cancel.click();
+            }
+          } else {
+            openBaseSelector();
+          }
+        },
+        className: CHANGE_BASE_CLASS
+      });
+      btn.setAttribute('data-gx-sparkle', 'around:8');
+
+      const wrapper = summary.parentElement;
+      if (wrapper) {
+        wrapper.insertAdjacentElement('afterend', btn);
+      } else {
+        summary.append(btn);
+      }
+
+      let editing = null;
+      function syncState() {
+        const next = isEditingBase();
+        if (next === editing) {
+          return;
+        }
+        editing = next;
+        GX.setLabel(btn, next ? 'Cancel edit' : 'Change target branch');
+        btn.title = next ? 'Cancel branch edit' : 'Change target branch';
+        btn.classList.toggle(CHANGE_BASE_CLASS + '--editing', next);
+      }
+      syncState();
+
+      function onOutsideClick(e) {
+        if (!isEditingBase()) {
+          return;
+        }
+        const target = e.target;
+        if (target.closest('[class*="PageLayout-HeaderContent"]')) {
+          return;
+        }
+        if (target.closest('[role="dialog"]')) {
+          return;
+        }
+        const cancel = findCancelButton();
+        if (cancel) {
+          cancel.click();
+        }
+      }
+
+      document.addEventListener('click', onOutsideClick, true);
+
+      const observer = new MutationObserver(syncState);
+      observer.observe(document.body, { childList: true, subtree: true });
+
+      return () => {
+        document.removeEventListener('click', onOutsideClick, true);
+        observer.disconnect();
+        btn.remove();
+      };
+    });
+  }
+
   function scrollTo(y) {
     window.scrollTo({ top: y, behavior: 'smooth' });
   }
@@ -1391,6 +1533,7 @@
     const cleanupReverse = mountReverseOrder();
     const cleanupHash = watchForHashNavigation();
     const cleanupAutoViewed = mountAutoViewed();
+    const cleanupChangeBase = mountChangeBase();
 
     return () => {
       cleanupTop();
@@ -1417,6 +1560,9 @@
       }
       if (cleanupAutoViewed) {
         cleanupAutoViewed();
+      }
+      if (cleanupChangeBase) {
+        cleanupChangeBase();
       }
       setDescriptionCollapsed(false);
     };
