@@ -425,6 +425,15 @@
     });
     right.append(manageBtn);
 
+    const feedbackBtn = GX.createButton({
+      label: 'Feedback',
+      title: 'Report a bug, share an idea, or send praise',
+      variant: 'ghost',
+      onClick: () => GX.feedback.open({ label: 'navbar' }),
+      className: 'gx-navbar-feedback-btn'
+    });
+    right.append(feedbackBtn);
+
     nav.append(left, right);
     document.body.prepend(nav);
 
@@ -460,6 +469,7 @@
   });
 
   loadState();
+  GX.feedback.mount();
   injectNavbar();
 
   const observer = new MutationObserver(() => {

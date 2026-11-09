@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "GitHub Enhancements",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Quality-of-life enhancements for github.com: popup tools and in-page buttons.",
   "minimum_chrome_version": "116",
 
@@ -38,6 +38,8 @@
         "src/content/gx-modal.js",
         "src/content/gx-pages.js",
         "src/content/gx-repo-nav.js",
+        "src/content/gx-feedback.js",
+        "src/vendor/lt3.js",
         "src/content/pages/pull-request.js",
         "src/content/pages/search.js",
         "src/content/content.js"

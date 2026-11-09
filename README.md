@@ -6,7 +6,7 @@
 
 ![Chrome](https://img.shields.io/badge/Chrome-MV3-4285F4?logo=googlechrome&logoColor=white)
 ![Vanilla JS](https://img.shields.io/badge/Vanilla_JS-No_Build-F7DF1E?logo=javascript&logoColor=black)
-![Version](https://img.shields.io/badge/version-0.1.4-blue)
+![Version](https://img.shields.io/badge/version-0.1.8-blue)
 
 </div>
 
@@ -42,6 +42,10 @@ Add your own links to the top navbar for quick access to any URL. Click **Add Bu
 
 URLs support tokens resolved from the current page: `{repo}` and `{prNumber}`. Tokens work with any scheme, including custom deep links. A button automatically disables itself on pages where its tokens can't be resolved (for example, a `{prNumber}` button is greyed out when you're not on a pull request).
 
+### Feedback
+
+A **Feedback** button sits to the right of **Add Buttons** in the top navbar. Click it to report a bug, share an idea, or send praise without leaving the page. Powered by [LT3](https://lt3.onrender.com).
+
 ### Pull Request & Issue Enhancements
 
 #### Comment Author Filter
@@ -59,6 +63,14 @@ Comments on the **Conversation** tab and the **Commits** tab are automatically r
 #### Description Collapse
 
 A chevron button appears in the top-right corner of the PR description. Click it to collapse the description body — useful for long template-heavy descriptions that push the conversation off screen. The description also auto-collapses when filters are active.
+
+#### Change Target Branch Button
+
+A **Change target branch** button appears in the PR header on the **Conversation** tab. Click it to jump straight into GitHub's base branch selector — no need to hit the edit pencil first. While editing, the button becomes **Cancel edit**, and clicking anywhere outside the header also cancels the edit.
+
+#### Auto Viewed (Changes Tab)
+
+An **Auto Viewed** switch sits next to the viewed-files progress on the **Changes** tab. When on, each file is automatically marked as **Viewed** once you scroll past it. On by default; your choice is saved and syncs across tabs.
 
 #### Side Panel Author Filter (Changes Tab)
 

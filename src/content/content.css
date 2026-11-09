@@ -418,8 +418,23 @@
   display: none;
 }
 
-.gx-navbar-manage-btn {
+.gx-navbar-manage-btn,
+.gx-navbar-feedback-btn {
   margin-right: 0;
+}
+
+[data-lt3-root] {
+  --lt3-bg: var(--bgColor-default, #0d1117);
+  --lt3-surface: var(--bgColor-muted, #161b22);
+  --lt3-text: var(--fgColor-default, #e6edf3);
+  --lt3-text-muted: var(--fgColor-muted, #8b949e);
+  --lt3-border: var(--borderColor-default, #30363d);
+  --lt3-accent: var(--bgColor-accent-emphasis, #1f6feb);
+  --lt3-accent-contrast: var(--fgColor-onEmphasis, #ffffff);
+  --lt3-danger: var(--fgColor-danger, #f85149);
+  --lt3-overlay: rgba(1, 4, 9, 0.6);
+  --lt3-radius: 6px;
+  --lt3-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .gx-nav-link--disabled,
