@@ -63,7 +63,7 @@
   ]);
 
   function pageContext() {
-    const ctx = { repo: '', prNumber: '' };
+    const ctx = { repo: '', prNumber: '', workflow_id: '', run_id: '' };
     const parts = location.pathname.split('/').filter(Boolean);
     const nwo = document.querySelector('meta[name="octolytics-dimension-repository_nwo"]');
 
@@ -75,6 +75,25 @@
 
     if (parts.length >= 4 && (parts[2] === 'pull' || parts[2] === 'issues') && /^\d+$/.test(parts[3])) {
       ctx.prNumber = parts[3];
+    }
+
+    if (parts.length >= 5 && parts[2] === 'actions') {
+      if (parts[3] === 'runs' && /^\d+$/.test(parts[4])) {
+        ctx.run_id = parts[4];
+      }
+      if (parts[3] === 'workflows' && parts[4]) {
+        ctx.workflow_id = parts[4];
+      }
+    }
+
+    if (ctx.run_id && !ctx.workflow_id) {
+      const wfLink = document.querySelector('a[href*="/actions/workflows/"]');
+      if (wfLink) {
+        const m = wfLink.href.match(/\/actions\/workflows\/([^/?#]+)/);
+        if (m) {
+          ctx.workflow_id = m[1];
+        }
+      }
     }
 
     return ctx;
@@ -166,7 +185,7 @@
 
     const hint = document.createElement('small');
     hint.className = 'gx-navbar-modal-hint';
-    hint.textContent = 'Tokens: {repo}, {prNumber} — resolved from the current page. Buttons disable when a token is unavailable.';
+    hint.textContent = 'Tokens: {repo}, {prNumber}, {workflow_id}, {run_id} — resolved from the current page. Buttons disable when a token is unavailable.';
     body.append(hint);
 
     const list = document.createElement('ul');
