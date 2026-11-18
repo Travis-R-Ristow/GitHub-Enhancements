@@ -3,6 +3,8 @@
   const BODY_CLASS = 'gx-enhanced';
   const STORAGE_KEY = 'gx-enabled';
   const NAV_BUTTONS_KEY = 'gx-navbar-buttons';
+  const CUSTOM_VARS_KEY = 'gx-custom-variables';
+  let cachedCustomVars = [];
 
   let enabled = false;
   let lastUrl = location.href;
@@ -55,6 +57,318 @@
     await GX.storage.set(NAV_BUTTONS_KEY, list);
   }
 
+  async function loadCustomVars() {
+    const list = await GX.storage.get(CUSTOM_VARS_KEY, []);
+    cachedCustomVars = Array.isArray(list) ? list : [];
+    return cachedCustomVars;
+  }
+
+  async function saveCustomVars(list) {
+    cachedCustomVars = list;
+    await GX.storage.set(CUSTOM_VARS_KEY, list);
+  }
+
+  function resolveCustomVar(v) {
+    try {
+      if (v.source === 'static') {
+        return v.value || '';
+      }
+      if (v.source === 'selector') {
+        const el = document.querySelector(v.value);
+        return el ? el.textContent.trim() : '';
+      }
+      if (v.source === 'meta') {
+        const el = document.querySelector('meta[name="' + CSS.escape(v.value) + '"]');
+        return el ? el.getAttribute('content') || '' : '';
+      }
+      if (v.source === 'url') {
+        const m = location.href.match(new RegExp(v.value));
+        return m ? (m[1] || m[0]) : '';
+      }
+    } catch {
+      return '';
+    }
+    return '';
+  }
+
+  function createVariablesSection(refreshLinks) {
+    const BUILTIN_VARS = [
+      { name: 'repo', desc: 'Repository name from URL' },
+      { name: 'prNumber', desc: 'PR or issue number from URL' },
+      { name: 'workflow_id', desc: 'Workflow file name from URL' },
+      { name: 'run_id', desc: 'Action run ID from URL' }
+    ];
+    const BUILTIN_NAMES = new Set(BUILTIN_VARS.map((b) => b.name));
+    const SOURCE_LABELS = {
+      static: 'Static',
+      selector: 'Selector',
+      meta: 'Meta Tag',
+      url: 'URL Regex'
+    };
+    const SOURCE_PLACEHOLDERS = {
+      static: 'Value (e.g. my-team)',
+      selector: 'CSS selector (e.g. .org-name)',
+      meta: 'Meta tag name',
+      url: 'Regex with capture group'
+    };
+
+    const section = document.createElement('details');
+    section.className = 'gx-collapsible gx-vars-section';
+
+    const summaryEl = document.createElement('summary');
+    summaryEl.className = 'gx-collapsible__summary';
+    summaryEl.textContent = 'Variables';
+    section.append(summaryEl);
+
+    const contentEl = document.createElement('div');
+    contentEl.className = 'gx-collapsible__content';
+
+    const biHeading = document.createElement('div');
+    biHeading.className = 'gx-vars-heading';
+    biHeading.textContent = 'Built-in';
+    contentEl.append(biHeading);
+
+    const biList = document.createElement('div');
+    biList.className = 'gx-vars-builtin';
+    for (const bi of BUILTIN_VARS) {
+      const chip = document.createElement('span');
+      chip.className = 'gx-vars-chip gx-vars-chip--builtin';
+      chip.textContent = '{' + bi.name + '}';
+      chip.title = bi.desc;
+      biList.append(chip);
+    }
+    contentEl.append(biList);
+
+    const custHeading = document.createElement('div');
+    custHeading.className = 'gx-vars-heading';
+    custHeading.textContent = 'Custom';
+    contentEl.append(custHeading);
+
+    const varsForm = document.createElement('form');
+    varsForm.className = 'gx-vars-form';
+
+    const nameIn = document.createElement('input');
+    nameIn.className = 'gx-input';
+    nameIn.placeholder = 'Name';
+    nameIn.required = true;
+
+    const sourceIn = document.createElement('select');
+    sourceIn.className = 'gx-select';
+    for (const [val, text] of Object.entries(SOURCE_LABELS)) {
+      const opt = document.createElement('option');
+      opt.value = val;
+      opt.textContent = text;
+      sourceIn.append(opt);
+    }
+
+    const valueIn = document.createElement('input');
+    valueIn.className = 'gx-input';
+    valueIn.placeholder = SOURCE_PLACEHOLDERS.static;
+    valueIn.required = true;
+
+    sourceIn.addEventListener('change', () => {
+      valueIn.placeholder = SOURCE_PLACEHOLDERS[sourceIn.value] || 'Value';
+    });
+
+    const varsAddBtn = document.createElement('button');
+    varsAddBtn.type = 'submit';
+    varsAddBtn.className = 'gx-btn gx-btn--default';
+    varsAddBtn.textContent = 'Add';
+
+    varsForm.append(nameIn, sourceIn, valueIn, varsAddBtn);
+    contentEl.append(varsForm);
+
+    const errorEl = document.createElement('div');
+    errorEl.className = 'gx-vars-error';
+    errorEl.hidden = true;
+    contentEl.append(errorEl);
+
+    const varsList = document.createElement('ul');
+    varsList.className = 'gx-vars-list';
+    contentEl.append(varsList);
+
+    function showError(msg) {
+      errorEl.textContent = msg;
+      errorEl.hidden = false;
+      clearTimeout(errorEl._timer);
+      errorEl._timer = setTimeout(() => {
+        errorEl.hidden = true;
+      }, 3000);
+    }
+
+    function renderItem(v) {
+      const li = document.createElement('li');
+      li.className = 'gx-vars-item';
+
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'gx-vars-item__name';
+      nameSpan.textContent = '{' + v.name + '}';
+
+      const badge = document.createElement('span');
+      badge.className = 'gx-vars-item__badge';
+      badge.dataset.source = v.source;
+      badge.textContent = SOURCE_LABELS[v.source] || v.source;
+
+      const valSpan = document.createElement('span');
+      valSpan.className = 'gx-vars-item__value';
+      valSpan.textContent = v.value;
+      valSpan.title = v.value;
+
+      const actions = document.createElement('div');
+      actions.className = 'gx-navbar-modal-actions';
+
+      const editBtn = document.createElement('button');
+      editBtn.type = 'button';
+      editBtn.className = 'gx-btn gx-btn--ghost';
+      editBtn.textContent = 'Edit';
+      editBtn.addEventListener('click', () => {
+        li.replaceWith(renderEditItem(v));
+      });
+
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'gx-btn gx-btn--ghost gx-navbar-modal-delete';
+      delBtn.textContent = '🗑';
+      delBtn.title = 'Delete';
+      delBtn.addEventListener('click', async () => {
+        const current = await loadCustomVars();
+        await saveCustomVars(current.filter((cv) => cv.id !== v.id));
+        refreshVarsList();
+        refreshLinks();
+      });
+
+      actions.append(editBtn, delBtn);
+      li.append(nameSpan, badge, valSpan, actions);
+      return li;
+    }
+
+    function renderEditItem(v) {
+      const li = document.createElement('li');
+      li.className = 'gx-vars-item gx-vars-item--editing';
+
+      const nameEdit = document.createElement('input');
+      nameEdit.className = 'gx-input';
+      nameEdit.value = v.name;
+
+      const sourceEdit = document.createElement('select');
+      sourceEdit.className = 'gx-select';
+      for (const [val, text] of Object.entries(SOURCE_LABELS)) {
+        const opt = document.createElement('option');
+        opt.value = val;
+        opt.textContent = text;
+        if (val === v.source) {
+          opt.selected = true;
+        }
+        sourceEdit.append(opt);
+      }
+
+      const valueEdit = document.createElement('input');
+      valueEdit.className = 'gx-input';
+      valueEdit.value = v.value;
+
+      const actions = document.createElement('div');
+      actions.className = 'gx-navbar-modal-actions';
+
+      const saveBtn = document.createElement('button');
+      saveBtn.type = 'button';
+      saveBtn.className = 'gx-btn gx-btn--default';
+      saveBtn.textContent = 'Save';
+      saveBtn.addEventListener('click', async () => {
+        const newName = nameEdit.value.trim();
+        if (!newName || !/^\w+$/.test(newName)) {
+          showError('Name must be letters, numbers, or underscores.');
+          return;
+        }
+        if (BUILTIN_NAMES.has(newName)) {
+          showError('"' + newName + '" is a built-in variable.');
+          return;
+        }
+        const current = await loadCustomVars();
+        const dupe = current.find((cv) => cv.name === newName && cv.id !== v.id);
+        if (dupe) {
+          showError('"' + newName + '" already exists.');
+          return;
+        }
+        const idx = current.findIndex((cv) => cv.id === v.id);
+        if (idx === -1) {
+          return;
+        }
+        current[idx] = {
+          ...current[idx],
+          name: newName,
+          source: sourceEdit.value,
+          value: valueEdit.value.trim() || current[idx].value
+        };
+        await saveCustomVars(current);
+        refreshVarsList();
+        refreshLinks();
+      });
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.type = 'button';
+      cancelBtn.className = 'gx-btn gx-btn--ghost';
+      cancelBtn.textContent = 'Cancel';
+      cancelBtn.addEventListener('click', () => {
+        li.replaceWith(renderItem(v));
+      });
+
+      actions.append(saveBtn, cancelBtn);
+      li.append(nameEdit, sourceEdit, valueEdit, actions);
+      return li;
+    }
+
+    async function refreshVarsList() {
+      const items = await loadCustomVars();
+      varsList.textContent = '';
+      if (items.length === 0) {
+        const empty = document.createElement('li');
+        empty.className = 'gx-navbar-modal-empty';
+        empty.textContent = 'No custom variables yet.';
+        varsList.append(empty);
+        return;
+      }
+      for (const v of items) {
+        varsList.append(renderItem(v));
+      }
+    }
+
+    varsForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = nameIn.value.trim();
+      const value = valueIn.value.trim();
+      if (!name || !value) {
+        return;
+      }
+      if (!/^\w+$/.test(name)) {
+        showError('Name must be letters, numbers, or underscores.');
+        return;
+      }
+      if (BUILTIN_NAMES.has(name)) {
+        showError('"' + name + '" is a built-in variable.');
+        return;
+      }
+      const items = await loadCustomVars();
+      if (items.some((cv) => cv.name === name)) {
+        showError('"' + name + '" already exists.');
+        return;
+      }
+      items.push({ id: makeId(), name, source: sourceIn.value, value });
+      await saveCustomVars(items);
+      nameIn.value = '';
+      valueIn.value = '';
+      sourceIn.value = 'static';
+      valueIn.placeholder = SOURCE_PLACEHOLDERS.static;
+      nameIn.focus();
+      refreshVarsList();
+      refreshLinks();
+    });
+
+    refreshVarsList();
+
+    section.append(contentEl);
+    return section;
+  }
+
   const TOKEN_RE = /\{(\w+)\}/g;
   const RESERVED_OWNERS = new Set([
     'settings', 'notifications', 'marketplace', 'explore', 'search', 'pulls',
@@ -93,6 +407,12 @@
         if (m) {
           ctx.workflow_id = m[1];
         }
+      }
+    }
+
+    for (const v of cachedCustomVars) {
+      if (!(v.name in ctx)) {
+        ctx[v.name] = resolveCustomVar(v);
       }
     }
 
@@ -163,7 +483,7 @@
 
     const urlInput = document.createElement('input');
     urlInput.className = 'gx-input';
-    urlInput.placeholder = 'https://... or use {repo} / {prNumber}';
+    urlInput.placeholder = 'https://... or use {token} placeholders';
     urlInput.required = true;
 
     const modeSelect = document.createElement('select');
@@ -185,8 +505,10 @@
 
     const hint = document.createElement('small');
     hint.className = 'gx-navbar-modal-hint';
-    hint.textContent = 'Tokens: {repo}, {prNumber}, {workflow_id}, {run_id} — resolved from the current page. Buttons disable when a token is unavailable.';
+    hint.textContent = 'Use {variableName} tokens in URLs. Buttons disable when a token is unavailable.';
     body.append(hint);
+
+    body.append(createVariablesSection(refreshLinks));
 
     const list = document.createElement('ul');
     list.className = 'gx-navbar-modal-list';
@@ -485,8 +807,17 @@
         renderCustomLinks(container);
       }
     }
+    if (area === 'local' && CUSTOM_VARS_KEY in changes) {
+      const val = changes[CUSTOM_VARS_KEY].newValue;
+      cachedCustomVars = Array.isArray(val) ? val : [];
+      const container = document.querySelector('.gx-navbar__custom-links');
+      if (container) {
+        renderCustomLinks(container);
+      }
+    }
   });
 
+  loadCustomVars();
   loadState();
   GX.feedback.mount();
   injectNavbar();
